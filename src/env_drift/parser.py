@@ -38,22 +38,40 @@ class ParsedEnv:
 def _strip_inline_comment(raw: str) -> str:
     """Drop a trailing ``# comment`` from an *unquoted* value.
 
-    ``B=plain#not-a-comment`` is a common mistake, so only a ``#`` preceded by
-    whitespace or at the start of the value is treated as a comment.
+    A ``#`` only opens a comment when whitespace precedes it, so
+    ``B=plain#not-a-comment`` keeps its value. A ``#`` at index 0 is *not* a
+    comment either: the line-level comment has already been handled by the
+    caller, so a value starting with ``#`` is real content (a hex colour like
+    ``COLOR=#ff0000``, or a URL fragment). Truncating it to an empty string
+    would report an empty value that does not exist.
     """
     for index, char in enumerate(raw):
         if char != "#":
             continue
-        if index == 0 or raw[index - 1] in " \t":
+        if index > 0 and raw[index - 1] in " \t":
             return raw[:index].rstrip()
     return raw
 
 
 def _clean_value(raw: str) -> str:
-    """Normalize a raw right-hand side: unquote, or strip a trailing comment."""
+    """Normalize a raw right-hand side: unquote, or strip a trailing comment.
+
+    The closing quote is what tells a quoted value apart from an unquoted one,
+    and a trailing comment after a quoted value is legal and common::
+
+        A="hello" # released in v2
+
+    So a value whose first character is a quote has to be searched for its
+    *closing* quote and everything past it treated as a comment. Deciding
+    "unquoted vs quoted" by comparing the first and last character instead
+    leaves the quotes in the value whenever a comment follows them.
+    """
     value = raw.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in _QUOTES:
-        return value[1:-1]
+    if value[:1] in _QUOTES:
+        closing = value.find(value[0], 1)
+        if closing != -1:
+            return value[1:closing]
+        # Unterminated quote: fall through and treat the whole thing as literal.
     return _strip_inline_comment(value)
 
 

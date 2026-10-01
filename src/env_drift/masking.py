@@ -25,8 +25,15 @@ REDACTED = "***REDACTED***"
 
 _KEY_PATTERN = re.compile(r"(SECRET|TOKEN|KEY|PASSWORD|PASSWD|CREDENTIAL|AUTH)", re.IGNORECASE)
 
-# user:pass@host, e.g. postgres://app:hunter2@db.internal:5432/app
-_URL_CREDENTIALS = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/\s:@]+:[^/\s:@]+@")
+# userinfo@host, e.g. postgres://app:s3cret@db.internal:5432/app
+#
+# The userinfo half is matched loosely and only its *presence* matters: any
+# userinfo containing a colon carries a password, even when the user side is
+# empty (``postgres://:s3cret@db/app`` is a common Docker/Postgres form) and
+# even when the password contains characters that a stricter class would
+# reject. Anchoring on the colon inside the authority -- before the first
+# ``/`` or ``@`` -- keeps a colon inside a path or query from counting.
+_URL_CREDENTIALS = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/\s@]*:[^/\s@]*@")
 
 # Well-known literal token shapes that leak even under an innocuous key name.
 _VALUE_PREFIXES = (

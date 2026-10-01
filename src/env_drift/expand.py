@@ -31,7 +31,15 @@ def _substitute(match: re.Match[str], values: dict[str, str]) -> str:
 
 
 def expand(value: str, values: dict[str, str]) -> str:
-    """Expand references in ``value`` using ``values`` as the lookup scope."""
+    """Expand references in ``value`` using ``values`` as the lookup scope.
+
+    Expansion happens **once** per value. Running it twice is not idempotent
+    and cannot be made so: ``\\$`` is the escape that turns into a literal
+    dollar sign, so a second pass would see that bare ``$`` and resolve it,
+    and two files that both literally spell ``\\$TEMPLATE`` would be reported
+    as drift. Callers that may be handed already-expanded data have to say so
+    rather than re-expand -- see ``EnvSnapshot.expanded``.
+    """
     current = value
     for _ in range(_MAX_DEPTH):
         expanded = _REFERENCE.sub(lambda m: _substitute(m, values), current)

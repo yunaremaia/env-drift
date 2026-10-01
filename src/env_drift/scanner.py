@@ -47,6 +47,12 @@ class EnvSnapshot:
     values: dict[str, str] = field(default_factory=dict)
     commented_keys: tuple[str, ...] = ()
     path: Path | None = None
+    #: True when ``values`` has already been through :func:`expand_all`.
+    #: Snapshots built by hand (library use, tests) default to False so that
+    #: comparison still resolves their references. Snapshots from
+    #: :func:`load_snapshots` set it, so the same values are never expanded
+    #: twice -- see the note on :func:`env_drift.expand.expand`.
+    expanded: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "values", dict(self.values))
@@ -85,6 +91,7 @@ def load_snapshots(files, expand: bool = True) -> list[EnvSnapshot]:
                 values=values,
                 commented_keys=parsed.commented_keys,
                 path=Path(env_file.path),
+                expanded=expand,
             )
         )
     return snapshots
@@ -94,13 +101,16 @@ def _severity_rank(severity: str) -> int:
     return SEVERITIES.index(severity)
 
 
-def _resolved(values: dict[str, str]) -> dict[str, str]:
+def _resolved(values: dict[str, str], expanded: bool = False) -> dict[str, str]:
     """Resolve ``${VAR}`` references so comparisons see final values.
 
-    ``load_snapshots`` already expands, but snapshots can also be built by
-    hand (library use, tests), and comparing an unresolved reference against an
-    expanded literal would invent drift that does not exist.
+    Only when they have not been resolved already. Expansion is deliberately
+    not idempotent -- ``\\$`` has to yield a literal dollar sign, and a second
+    pass would resolve that dollar sign -- so a snapshot that came from
+    :func:`load_snapshots` must not be expanded a second time.
     """
+    if expanded:
+        return dict(values)
     return expand_all(values)
 
 
@@ -234,7 +244,7 @@ def scan(snapshots: list[EnvSnapshot], config: Config) -> list[EnvDrift]:
         return []
 
     names = [s.name for s in snapshots]
-    values_by_env = {s.name: _resolved(s.values) for s in snapshots}
+    values_by_env = {s.name: _resolved(s.values, s.expanded) for s in snapshots}
     found_keys = {key for values in values_by_env.values() for key in values}
     # A required key that no environment declares is drift in its own right,
     # so it has to enter the loop even though it appears in no file.

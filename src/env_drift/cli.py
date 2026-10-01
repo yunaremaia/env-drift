@@ -174,15 +174,29 @@ def _cmd_scan(args: argparse.Namespace) -> int:
 
 def _cmd_diff(args: argparse.Namespace) -> int:
     root, _config, files = _load(args)
-    by_name = {f.name: f for f in files}
+    by_name: dict[str, list] = {}
+    for found in files:
+        by_name.setdefault(found.name, []).append(found)
 
     for name in (args.env_a, args.env_b):
         if name not in by_name:
             available = ", ".join(sorted(by_name)) or "none"
             raise UsageError(f"unknown environment {name!r}; discovered: {available}")
 
-    source = load_snapshots([by_name[args.env_a]])[0]
-    target = load_snapshots([by_name[args.env_b]])[0]
+    def resolve(name: str):
+        matches = by_name[name]
+        if len(matches) > 1:
+            # Selecting by bare name is ambiguous in a monorepo, where every
+            # service has its own `.env.production`. Silently taking the last
+            # match would diff a file the caller never asked for.
+            paths = ", ".join(str(m.path) for m in matches)
+            raise UsageError(
+                f"environment {name!r} is ambiguous, found {len(matches)} files: {paths}"
+            )
+        return matches[0]
+
+    source = load_snapshots([resolve(args.env_a)])[0]
+    target = load_snapshots([resolve(args.env_b)])[0]
     entries = diff_snapshots(source, target)
     mask = not args.show_secrets
 
@@ -191,7 +205,9 @@ def _cmd_diff(args: argparse.Namespace) -> int:
         payload["diff"] = [_safe_entry(entry, mask) for entry in entries]
         payload["summary"] = {"total": len(entries), "by_action": _count_actions(entries)}
         print(json.dumps(payload, indent=2))
-        return EXIT_OK
+        # Documented contract: 0 = no differences, 1 = differences found. A
+        # `diff` that always exits 0 can never fail a CI gate that wants it to.
+        return EXIT_DRIFT if entries else EXIT_OK
 
     if args.format == "sarif":
         raise UsageError("sarif output is only available for `scan`")
@@ -205,7 +221,7 @@ def _cmd_diff(args: argparse.Namespace) -> int:
             line = _mask_rendered(line, entry)
         lines.append(line)
     print("\n".join(lines))
-    return EXIT_OK
+    return EXIT_DRIFT if entries else EXIT_OK
 
 
 def _count_actions(entries) -> dict[str, int]:

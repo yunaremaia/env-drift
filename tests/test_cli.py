@@ -145,7 +145,7 @@ def test_missing_config_path_exits_two(project):
 def test_diff_shows_added_removed_and_changed(tmp_path):
     (tmp_path / ".env.dev").write_text("A=1\nB=2\n", encoding="utf-8")
     (tmp_path / ".env.prod").write_text("A=1\nC=3\n", encoding="utf-8")
-    result = run("diff", "dev", "prod", cwd=tmp_path, expect=0)
+    result = run("diff", "dev", "prod", cwd=tmp_path, expect=1)
     assert "- B=2" in result.stdout
     assert "+ C=3" in result.stdout
 
@@ -153,14 +153,14 @@ def test_diff_shows_added_removed_and_changed(tmp_path):
 def test_diff_marks_changed_values(tmp_path):
     (tmp_path / ".env.dev").write_text("A=1\n", encoding="utf-8")
     (tmp_path / ".env.prod").write_text("A=2\n", encoding="utf-8")
-    result = run("diff", "dev", "prod", cwd=tmp_path, expect=0)
+    result = run("diff", "dev", "prod", cwd=tmp_path, expect=1)
     assert "~ A: 1 -> 2" in result.stdout
 
 
 def test_diff_json_has_action_field(tmp_path):
     (tmp_path / ".env.dev").write_text("A=1\n", encoding="utf-8")
     (tmp_path / ".env.prod").write_text("A=2\n", encoding="utf-8")
-    result = run("diff", "dev", "prod", "--format", "json", cwd=tmp_path, expect=0)
+    result = run("diff", "dev", "prod", "--format", "json", cwd=tmp_path, expect=1)
     payload = json.loads(result.stdout)
     assert payload["diff"][0]["action"] == "changed"
 
@@ -182,7 +182,7 @@ def test_diff_with_unknown_environment_exits_two(tmp_path):
 def test_diff_masks_secrets(tmp_path):
     (tmp_path / ".env.dev").write_text("API_TOKEN=abc123\n", encoding="utf-8")
     (tmp_path / ".env.prod").write_text("API_TOKEN=def456\n", encoding="utf-8")
-    result = run("diff", "dev", "prod", cwd=tmp_path, expect=0)
+    result = run("diff", "dev", "prod", cwd=tmp_path, expect=1)
     assert "abc123" not in result.stdout
     assert "def456" not in result.stdout
     assert "***REDACTED***" in result.stdout
