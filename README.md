@@ -1,17 +1,22 @@
 # env-drift
 
-Detect cross-environment configuration drift — when `.env.development`, `.env.staging`, and `.env.production` diverge in unexpected ways.
+Compare the `.env` files of a project against each other and report the keys that diverged, before the divergence reaches production.
 
-## Problem
+[![CI](https://github.com/yunaremaia/env-drift/actions/workflows/ci.yml/badge.svg)](https://github.com/yunaremaia/env-drift/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/yunaremaia/env-drift)](https://github.com/yunaremaia/env-drift/releases)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/yunaremaia/env-drift/blob/main/pyproject.toml)
+[![License: MIT](https://img.shields.io/github/license/yunaremaia/env-drift)](https://github.com/yunaremaia/env-drift/blob/main/LICENSE)
 
-Modern applications maintain multiple environment files (`.env.development`, `.env.staging`, `.env.production`). Common failure modes:
+## Why
 
-- **Missing keys** in production that exist in development (causes `undefined` values in prod)
-- **Divergent secrets** where staging and production should share the same keys (database URLs, API endpoints)
-- **Inconsistent values** where the same key has different formats across environments
-- **Orphaned keys** that exist in prod but no longer in any other environment (dead config, security risk)
+A project that keeps `.env.development`, `.env.staging` and `.env.production` has three files that are only supposed to differ in the ways you decided they may differ. Nothing enforces that, so drift accumulates silently until a deploy breaks:
 
-Existing tools validate *individual* files (`dotenv-linter`, `dotenv-validator`) but do **not** compare across environments. This leaves drift undetected until a deploy breaks.
+- **Missing keys** — a key added to `.env.development` and `.env.staging` never reaches `.env.production`, and the production code reads `undefined` at runtime.
+- **Orphaned keys** — a key still set in `.env.production` that no other environment declares any more: dead config that keeps a real credential in the deployed artifact.
+- **Divergent shared values** — `DATABASE_URL` pointing at different hosts per environment, which the per-file linters consider correct because each file is individually valid.
+- **Format mismatches** — the same value spelled incompatibly across environments (`true` vs `True`, `30` vs `30s`), which parses in one place and fails in another.
+
+Linters like `dotenv-linter` and `dotenv-validator` check *one file at a time*, so a key can be perfectly valid everywhere and still wrong across environments. `env-drift` reads every environment it discovers in one pass and compares them against each other, then exits non-zero so the same check runs in CI.
 
 ## Solution
 
@@ -30,11 +35,13 @@ A plain value difference is **not** drift — `DEBUG=true` in development and `D
 
 ### Install
 
-env-drift is not on PyPI yet. Install it from the repository:
+`env-drift` is not published on PyPI. Install it straight from the repository:
 
 ```bash
 pip install git+https://github.com/yunaremaia/env-drift.git
 ```
+
+The console script is named `env-drift` and the import package is `env_drift`. It has no runtime dependencies — `pip install` pulls nothing but the tool itself.
 
 Or, for development:
 
