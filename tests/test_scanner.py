@@ -143,6 +143,28 @@ def test_single_environment_never_reports_missing_or_orphan():
     assert findings == []
 
 
+def test_single_environment_required_key_is_an_error():
+    """A required key absent from a single environment is still drift."""
+    findings = scan(
+        [EnvSnapshot("production", {"A": "1"}, ())],
+        Config(required_keys=("SECRET_KEY",)),
+    )
+    assert len(findings) == 1
+    assert findings[0].key == "SECRET_KEY"
+    assert findings[0].drift_type == "missing_key_in_env"
+    assert findings[0].severity == "error"
+
+
+def test_single_environment_required_in_prod_is_an_error():
+    findings = scan(
+        [EnvSnapshot("production", {"A": "1"}, ())],
+        Config(required_in_prod=("SECRET_KEY",)),
+    )
+    assert len(findings) == 1
+    assert findings[0].key == "SECRET_KEY"
+    assert findings[0].severity == "error"
+
+
 def test_findings_are_sorted_by_key():
     a = EnvSnapshot("dev", {"A": "1", "ZED": "9"}, ())
     b = EnvSnapshot("staging", {"A": "1", "ZED": "9"}, ())

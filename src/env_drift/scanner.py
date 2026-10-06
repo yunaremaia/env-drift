@@ -276,9 +276,6 @@ def _value_check(key, values_by_env, defined_in, present, config, path=None):
 
 def scan(snapshots: list[EnvSnapshot], config: Config) -> list[EnvDrift]:
     """Compare every environment against every other and report drift."""
-    if len(snapshots) < 2:
-        return []
-
     names = [s.name for s in snapshots]
     values_by_env = {s.name: _resolved(s.values, s.expanded) for s in snapshots}
     found_keys = {key for values in values_by_env.values() for key in values}
