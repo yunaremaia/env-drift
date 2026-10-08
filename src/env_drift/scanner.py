@@ -243,7 +243,7 @@ def _value_check(key, values_by_env, defined_in, present, config, path=None):
 
     shapes = {name: shape_of(values_by_env[name][key]) for name in defined_in}
     reason = None
-    if len(set(shapes.values())) > 1:
+    if "empty" not in shapes.values() and len(set(shapes.values())) > 1:
         reason = ", ".join(f"{name}={shapes[name]}" for name in defined_in)
     elif _casing_inconsistent(values_by_env, defined_in, key):
         reason = ", ".join(f"{name}={values_by_env[name][key]!r}" for name in defined_in)

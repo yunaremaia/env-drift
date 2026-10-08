@@ -37,6 +37,14 @@ def test_number_versus_url_is_a_format_mismatch():
     assert len(only(scan([a, b], Config()), "format_mismatch")) == 1
 
 
+def test_empty_value_does_not_also_trigger_format_mismatch():
+    a = EnvSnapshot("dev", {"TIMEOUT": "30"}, ())
+    b = EnvSnapshot("prod", {"TIMEOUT": ""}, ())
+    findings = scan([a, b], Config())
+    assert only(findings, "format_mismatch") == []
+    assert len(only(findings, "empty_value")) == 1
+
+
 def test_empty_value_where_another_env_has_one_is_reported():
     a = EnvSnapshot("dev", {"LOG_LEVEL": "debug"}, ())
     b = EnvSnapshot("prod", {"LOG_LEVEL": ""}, ())
