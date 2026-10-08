@@ -23,7 +23,7 @@ __all__ = [
 
 REDACTED = "***REDACTED***"
 
-_KEY_PATTERN = re.compile(r"(SECRET|TOKEN|KEY|PASSWORD|PASSWD|CREDENTIAL|AUTH)", re.IGNORECASE)
+_KEY_PATTERN = re.compile(r"(SECRET|TOKEN|KEY|PASSWORD|PASSWD|PASS|PWD|CREDENTIAL|AUTH)", re.IGNORECASE)
 
 # userinfo@host, e.g. postgres://app:s3cret@db.internal:5432/app
 #

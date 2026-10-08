@@ -9,6 +9,10 @@ SECRET_KEYS = [
     "DB_PASSWORD",
     "SERVICE_CREDENTIALS",
     "STRIPE_SECRET_KEY",
+    "DB_PASS",
+    "MYSQL_ROOT_PASS",
+    "REDIS_PWD",
+    "ADMIN_PASS",
 ]
 
 

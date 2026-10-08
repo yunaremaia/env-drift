@@ -53,10 +53,20 @@ def test_empty_required_value_is_an_error():
     assert found[0].severity == "error"
 
 
-def test_key_empty_in_every_environment_is_not_reported_as_empty_drift():
+def test_key_empty_in_every_environment_is_reported_as_empty_drift():
     a = EnvSnapshot("dev", {"LOG_LEVEL": ""}, ())
     b = EnvSnapshot("prod", {"LOG_LEVEL": ""}, ())
-    assert only(scan([a, b], Config()), "empty_value") == []
+    found = only(scan([a, b], Config()), "empty_value")
+    assert len(found) == 1
+    assert found[0].severity == "warning"
+
+
+def test_key_empty_in_every_environment_required_is_an_error():
+    a = EnvSnapshot("dev", {"LOG_LEVEL": ""}, ())
+    b = EnvSnapshot("prod", {"LOG_LEVEL": ""}, ())
+    found = only(scan([a, b], Config(required_keys=("LOG_LEVEL",))), "empty_value")
+    assert len(found) == 1
+    assert found[0].severity == "error"
 
 
 def test_commented_key_live_elsewhere_is_pending_removal():

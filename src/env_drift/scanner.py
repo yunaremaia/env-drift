@@ -260,7 +260,7 @@ def _value_check(key, values_by_env, defined_in, present, config, path=None):
         )
 
     empty_in = [name for name in defined_in if values_by_env[name][key] == ""]
-    if empty_in and len(distinct) > 1:
+    if empty_in:
         findings.append(
             EnvDrift(
                 key=key,
